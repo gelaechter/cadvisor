@@ -30,6 +30,7 @@ import (
 )
 
 var dockerTimeout = 10 * time.Second
+var ignoreDockerVersion = false
 
 func defaultContext() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), dockerTimeout)
@@ -113,6 +114,10 @@ func Images() ([]v1.DockerImage, error) {
 
 }
 
+func setIgnoreValidate(ignoreValidate *bool) {
+	ignoreDockerVersion = *ignoreValidate
+}
+
 // Checks whether the dockerInfo reflects a valid docker setup, and returns it if it does, or an
 // error otherwise.
 func ValidateInfo() (*dockertypes.Info, error) {
@@ -126,21 +131,23 @@ func ValidateInfo() (*dockertypes.Info, error) {
 		return nil, fmt.Errorf("failed to detect Docker info: %v", err)
 	}
 
-	// Fall back to version API if ServerVersion is not set in info.
-	if dockerInfo.ServerVersion == "" {
-		version, err := client.ServerVersion(defaultContext())
-		if err != nil {
-			return nil, fmt.Errorf("unable to get docker version: %v", err)
+	if !ignoreDockerVersion {
+		// Fall back to version API if ServerVersion is not set in info.
+		if dockerInfo.ServerVersion == "" {
+			version, err := client.ServerVersion(defaultContext())
+			if err != nil {
+				return nil, fmt.Errorf("unable to get docker version: %v", err)
+			}
+			dockerInfo.ServerVersion = version.Version
 		}
-		dockerInfo.ServerVersion = version.Version
-	}
-	version, err := parseVersion(dockerInfo.ServerVersion, versionRe, 3)
-	if err != nil {
-		return nil, err
-	}
+		version, err := parseVersion(dockerInfo.ServerVersion, versionRe, 3)
+		if err != nil {
+			return nil, err
+		}
 
-	if version[0] < 1 {
-		return nil, fmt.Errorf("cAdvisor requires docker version %v or above but we have found version %v reported as %q", []int{1, 0, 0}, version, dockerInfo.ServerVersion)
+		if version[0] < 1 {
+			return nil, fmt.Errorf("cAdvisor requires docker version %v or above but we have found version %v reported as %q", []int{1, 0, 0}, version, dockerInfo.ServerVersion)
+		}
 	}
 
 	if dockerInfo.Driver == "" {
@@ -183,6 +190,10 @@ func APIVersionString() (string, error) {
 }
 
 func parseVersion(versionString string, regex *regexp.Regexp, length int) ([]int, error) {
+	if !ignoreDockerVersion {
+		return []int{20, 10, 17}, nil
+	}
+
 	matches := regex.FindAllStringSubmatch(versionString, -1)
 	if len(matches) != 1 {
 		return nil, fmt.Errorf("version string \"%v\" doesn't match expected regular expression: \"%v\"", versionString, regex.String())

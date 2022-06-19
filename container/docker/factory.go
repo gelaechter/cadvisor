@@ -47,6 +47,7 @@ var ArgDockerTLS = flag.Bool("docker-tls", false, "use TLS to connect to docker"
 var ArgDockerCert = flag.String("docker-tls-cert", "cert.pem", "path to client certificate")
 var ArgDockerKey = flag.String("docker-tls-key", "key.pem", "path to private key")
 var ArgDockerCA = flag.String("docker-tls-ca", "ca.pem", "path to trusted CA")
+var ArgDockerIgnoreVersion = flag.Bool("docker-ignore-version", false, "don't validate the version of the docker engine")
 
 var dockerEnvMetadataWhiteList = flag.String("docker_env_metadata_whitelist", "", "DEPRECATED: this flag will be removed, please use `env_metadata_whitelist`. A comma-separated list of environment variable keys matched with specified prefix that needs to be collected for docker containers")
 
